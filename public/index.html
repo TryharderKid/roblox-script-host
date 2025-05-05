@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Script Hosting</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      margin-bottom: 10px;
+    }
+    .script-list {
+      margin-top: 30px;
+    }
+    .script-item {
+      border: 1px solid #ddd;
+      padding: 10px;
+      margin-bottom: 10px;
+      border-radius: 4px;
+    }
+    .copy-btn {
+      background: #4CAF50;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Roblox Script Hosting</h1>
+  
+  <div class="upload-form">
+    <h2>Upload a New Script</h2>
+    <form id="scriptForm">
+      <div>
+        <label for="scriptName">Script Name:</label>
+        <input type="text" id="scriptName" required>
+      </div>
+      <div>
+        <label for="scriptContent">Script Content:</label>
+        <textarea id="scriptContent" required></textarea>
+      </div>
+      <button type="submit">Upload Script</button>
+    </form>
+  </div>
+  
+  <div class="script-list">
+    <h2>Your Scripts</h2>
+    <div id="scriptsList"></div>
+  </div>
+
+  <script>
+    // Upload script
+    document.getElementById('scriptForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const name = document.getElementById('scriptName').value;
+      const content = document.getElementById('scriptContent').value;
+      
+      try {
+        const response = await fetch('/api/scripts', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name, content })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          alert(`Script uploaded! Access Key: ${data.accessKey}`);
+          document.getElementById('scriptName').value = '';
+          document.getElementById('scriptContent').value = '';
+          loadScripts();
+        } else {
+          alert(`Error: ${data.error}`);
+        }
+      } catch (error) {
+        alert(`Error: ${error.message}`);
+      }
+    });
+    
+    // Load scripts
+    async function loadScripts() {
+      try {
+        const response = await fetch('/api/scripts');
+        const scripts = await response.json();
+        
+        const scriptsList = document.getElementById('scriptsList');
+        scriptsList.innerHTML = '';
+        
+        scripts.forEach(script => {
+          const executeUrl = `/api/execute/${script.accessKey}`;
+          const robloxCode = `loadstring(game:HttpGet("${window.location.origin}${executeUrl}"))()`;
+          
+          const scriptItem = document.createElement('div');
+          scriptItem.className = 'script-item';
+          scriptItem.innerHTML = `
+            <h3>${script.name}</h3>
+            <p>Created: ${new Date(script.createdAt).toLocaleString()}</p>
+            <p>Access Key: ${script.accessKey}</p>
+            <p>Roblox Code:</p>
+            <pre>${robloxCode}</pre>
+            <button class="copy-btn" onclick="copyToClipboard('${robloxCode}')">Copy Code</button>
+          `;
+          
+          scriptsList.appendChild(scriptItem);
+        });
+      } catch (error) {
+        console.error('Error loading scripts:', error);
+      }
+    }
+    
+    // Copy to clipboard function
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text)
+        .then(() => alert('Code copied to clipboard!'))
+        .catch(err => console.error('Failed to copy: ', err));
+    }
+    
+    // Load scripts on page load
+    window.onload = loadScripts;
+  </script>
+</body>
+</html>
